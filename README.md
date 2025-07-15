@@ -10,7 +10,7 @@ Built with **Node.js**, **Express**, and **Multer**.
 - 📁 Upload any file
 - 🔗 Get a direct download link
 - 🧩 Pure API — no frontend
-- 🔒 Works locally or expose via `ngrok` / `cloudflared`
+- 🔒 Works locally or expose via `ngrok` 
 
 ---
 
