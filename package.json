@@ -1,0 +1,26 @@
+{
+  "name": "temp-file-server",
+  "version": "1.0.0",
+  "description": "A simple raw file upload/download API built with Express and Multer.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": ["express", "multer", "file-upload", "api"],
+  "author": "aswin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/00nx/temp-file-server"
+  },
+  "bugs": {
+    "url": "https://github.com/00nx/temp-file-server/issues"
+  },
+  "homepage": "https://github.com/00nx/temp-file-server#readme",
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.2",
+    "uuid": "^11.1.0"
+  }
+}
