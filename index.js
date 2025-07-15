@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const port = 3000;
 
-const UPLOAD_FOLDER = path.join(__dirname, 'uploads');
+const UPLOAD_FOLDER = path.join(__dirname, 'upload');
 const LINKS_FILE = path.join(__dirname, 'links.json');
 
 
