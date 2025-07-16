@@ -53,3 +53,18 @@ ngrok http 3000
 Copy the HTTPS forwarding link
 Use it to upload or download files, e.g.
 https://abc123.ngrok.io/uploadfile
+
+
+✅ Using Cloudflared
+# Download [Cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/update-cloudflared/) &  add it to your PATH.
+
+Run a tunnel:
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+Use the generated trycloudflare.com link: 
+
+```bash
+https://abc123.trycloudflare.com/uploadfile****
+```
