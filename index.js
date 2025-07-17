@@ -72,13 +72,20 @@ app.get('/download/:downloadId', (req, res) => {
     return res.status(404).send('File not found.');
   }
 
-  res.download(filePath, path.basename(filePath), (err) => {
-    if (err) {
-      console.error(`Error sending file: ${err}`);
-      if (!res.headersSent) res.status(500).send('Error downloading file.');
-    }
+res.download(filePath, path.basename(filePath), (err) => {
+  if (err) {
+    console.error(`Download error: ${err}`);
+    return res.status(500).send('Download failed.');
+  }
+
+  // One-time link: delete file + entry
+  fs.unlink(filePath, (unlinkErr) => {
+    if (unlinkErr) console.warn(`File delete failed: ${unlinkErr}`);
   });
+  delete links[downloadId];
+  saveLinks(links);
 });
+
 
 app.listen(port, () => {
   console.log(`API server listening on http://localhost:${port}`);
