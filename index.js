@@ -37,15 +37,19 @@ app.post('/uploadfile', upload.any(), (req, res) => {
   const downloadId = uuidv4();
   const filePath = uploadedFile.path;
 
-  let links = {};
+const loadLinks = () => {
   try {
-    links = JSON.parse(fs.readFileSync(LINKS_FILE, 'utf-8'));
-  } catch (e) {
-    console.error("Failed to read links.json:", e);
+    return JSON.parse(fs.readFileSync(LINKS_FILE, 'utf-8'));
+  } catch (err) {
+    console.error('Failed to read links.json:', err);
+    return {};
   }
+};
 
-  links[downloadId] = filePath;
+const saveLinks = (links) => {
   fs.writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2));
+};
+
 
   const downloadLink = `http://localhost:${port}/download/${downloadId}`;
   res.status(200).json({ downloadLink });
