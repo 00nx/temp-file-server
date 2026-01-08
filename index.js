@@ -31,7 +31,15 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-
+async function loadLinks() {
+  try {
+    const data = await fs.readFile(LINKS_FILE, 'utf-8');
+    linksCache = JSON.parse(data);
+  } catch (err) {
+    console.error('Failed to load links.json, initializing empty:', err.message);
+    linksCache = {};
+  }
+  
 const saveLinks = (links) => {
   fs.writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2));
 };
@@ -83,5 +91,6 @@ app.get('/download/:downloadId', (req, res) => {
 app.listen(port, () => {
   console.log(`API server listening on http://localhost:${port}`);
 });
+
 
 
