@@ -1,19 +1,18 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs').promises; // Use promises for non-blocking I/O
+const fs = require('fs').promises; 
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const port = 3000;
 
-const UPLOAD_FOLDER = path.join(__dirname, 'uploads'); // Renamed for clarity
+const UPLOAD_FOLDER = path.join(__dirname, 'uploads'); 
 const LINKS_FILE = path.join(__dirname, 'links.json');
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit (adjust as needed)
-const ALLOWED_MIME_TYPES = null; // Set to array like ['image/', 'application/pdf'] to restrict
+const ALLOWED_MIME_TYPES = null; 
 
-// Ensure directories and files exist
 (async () => {
   await fs.mkdir(UPLOAD_FOLDER, { recursive: true });
   try {
@@ -23,11 +22,9 @@ const ALLOWED_MIME_TYPES = null; // Set to array like ['image/', 'application/pd
   }
 })();
 
-// Multer configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_FOLDER),
   filename: (req, file, cb) => {
-    // Sanitize filename
     const ext = path.extname(file.originalname);
     const safeName = uuidv4() + ext;
     cb(null, safeName);
@@ -46,11 +43,9 @@ const upload = multer({
   },
 });
 
-// In-memory cache for links (reduces disk I/O)
 let linksCache = {};
 let cacheDirty = false;
 
-// Load links from disk
 async function loadLinks() {
   try {
     const data = await fs.readFile(LINKS_FILE, 'utf-8');
@@ -73,7 +68,6 @@ async function saveLinksIfDirty() {
   }
 }
 
-// Periodic save (every 10 seconds if dirty)
 setInterval(saveLinksIfDirty, 10000);
 
 // Graceful shutdown
@@ -151,3 +145,4 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Secure one-time file share server running at http://localhost:${port}`);
 });
+
