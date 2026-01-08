@@ -43,7 +43,11 @@ async function loadLinks() {
 const saveLinks = (links) => {
   fs.writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2));
 };
-
+setInterval(saveLinksIfDirty, 10000);
+process.on('SIGINT', async () => {
+  await saveLinksIfDirty();
+  process.exit(0);
+});
 // Upload route
 app.post('/uploadfile', upload.any(), (req, res) => {
   if (!req.files || req.files.length === 0) {
@@ -102,6 +106,7 @@ app.get('/download/:downloadId', (req, res) => {
 app.listen(port, () => {
   console.log(`API server listening on http://localhost:${port}`);
 });
+
 
 
 
