@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises; 
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
@@ -10,9 +10,14 @@ const port = 3000;
 const UPLOAD_FOLDER = path.join(__dirname, 'upload');
 const LINKS_FILE = path.join(__dirname, 'links.json');
 
-// Ensure folders and files exist
-if (!fs.existsSync(UPLOAD_FOLDER)) fs.mkdirSync(UPLOAD_FOLDER);
-if (!fs.existsSync(LINKS_FILE)) fs.writeFileSync(LINKS_FILE, JSON.stringify({}));
+(async () => {
+  await fs.mkdir(UPLOAD_FOLDER, { recursive: true });
+  try {
+    await fs.access(LINKS_FILE);
+  } catch {
+    await fs.writeFile(LINKS_FILE, JSON.stringify({}));
+  }
+})();
 
 // Multer storage config
 const storage = multer.diskStorage({
@@ -24,15 +29,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Reusable helpers
-const loadLinks = () => {
-  try {
-    return JSON.parse(fs.readFileSync(LINKS_FILE, 'utf-8'));
-  } catch (err) {
-    console.error('Failed to read links.json:', err);
-    return {};
-  }
-};
 
 const saveLinks = (links) => {
   fs.writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2));
@@ -85,3 +81,4 @@ app.get('/download/:downloadId', (req, res) => {
 app.listen(port, () => {
   console.log(`API server listening on http://localhost:${port}`);
 });
+
