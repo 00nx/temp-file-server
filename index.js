@@ -56,7 +56,6 @@ async function loadLinks() {
   }
 }
 
-// Save links to disk (only if dirty)
 async function saveLinksIfDirty() {
   if (cacheDirty) {
     try {
@@ -70,19 +69,15 @@ async function saveLinksIfDirty() {
 
 setInterval(saveLinksIfDirty, 10000);
 
-// Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\nShutting down... Saving links...');
   await saveLinksIfDirty();
   process.exit(0);
 });
 
-// Initialize cache
 loadLinks();
 
-// Upload route
 app.post('/uploadfile', upload.single('file'), async (req, res) => {
-  // Changed to .single('file') — more explicit and common pattern
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded.' });
   }
@@ -97,24 +92,21 @@ app.post('/uploadfile', upload.single('file'), async (req, res) => {
   res.status(200).json({ downloadLink });
 });
 
-// Download route (one-time link)
 app.get('/download/:downloadId', async (req, res) => {
   const { downloadId } = req.params;
   const filePath = linksCache[downloadId];
 
   if (!filePath || !(await fs.stat(filePath).catch(() => false))) {
-    delete linksCache[downloadId]; // Clean up stale entry
+    delete linksCache[downloadId]; 
     cacheDirty = true;
     return res.status(404).send('File not found or link expired.');
   }
 
-  // Set filename for download
   const filename = path.basename(filePath);
 
   res.download(filePath, filename, async (err) => {
     if (err) {
       console.error(`Download error for ${downloadId}:`, err);
-      // Don't delete on client cancel/error to allow retry
       if (!res.headersSent) {
         res.status(500).send('Download failed.');
       }
@@ -145,4 +137,5 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Secure one-time file share server running at http://localhost:${port}`);
 });
+
 
