@@ -62,6 +62,17 @@ app.post('/uploadfile', upload.any(), (req, res) => {
   res.status(200).json({ downloadLink });
 });
 
+  async function saveLinksIfDirty() {
+  if (cacheDirty) {
+    try {
+      await fs.writeFile(LINKS_FILE, JSON.stringify(linksCache, null, 2));
+      cacheDirty = false;
+    } catch (err) {
+      console.error('Failed to save links.json:', err);
+    }
+  }
+}
+  
 // Download route
 app.get('/download/:downloadId', (req, res) => {
   const { downloadId } = req.params;
@@ -91,6 +102,7 @@ app.get('/download/:downloadId', (req, res) => {
 app.listen(port, () => {
   console.log(`API server listening on http://localhost:${port}`);
 });
+
 
 
 
