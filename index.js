@@ -113,7 +113,6 @@ app.get('/download/:downloadId', async (req, res) => {
       return;
     }
 
-    // Successful download → delete file and link
     await fs.unlink(filePath).catch(unlinkErr => {
       console.warn(`Failed to delete file ${filePath}:`, unlinkErr.message);
     });
@@ -123,7 +122,6 @@ app.get('/download/:downloadId', async (req, res) => {
   });
 });
 
-// Optional: Serve a simple upload form for testing
 app.get('/', (req, res) => {
   res.send(`
     <h2>File Upload (One-time Download Link)</h2>
@@ -137,5 +135,6 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`Secure one-time file share server running at http://localhost:${port}`);
 });
+
 
 
