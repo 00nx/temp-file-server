@@ -6,6 +6,8 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const port = 3000;
+let linksCache = {};
+let cacheDirty = false;
 
 const UPLOAD_FOLDER = path.join(__dirname, 'upload');
 const LINKS_FILE = path.join(__dirname, 'links.json');
@@ -81,4 +83,5 @@ app.get('/download/:downloadId', (req, res) => {
 app.listen(port, () => {
   console.log(`API server listening on http://localhost:${port}`);
 });
+
 
