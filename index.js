@@ -1,17 +1,19 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs').promises; 
+const fs = require('fs').promises; // Use promises for non-blocking I/O
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const port = 3000;
-let linksCache = {};
-let cacheDirty = false;
 
-const UPLOAD_FOLDER = path.join(__dirname, 'upload');
+const UPLOAD_FOLDER = path.join(__dirname, 'uploads'); // Renamed for clarity
 const LINKS_FILE = path.join(__dirname, 'links.json');
 
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit (adjust as needed)
+const ALLOWED_MIME_TYPES = null; // Set to array like ['image/', 'application/pdf'] to restrict
+
+// Ensure directories and files exist
 (async () => {
   await fs.mkdir(UPLOAD_FOLDER, { recursive: true });
   try {
@@ -21,16 +23,34 @@ const LINKS_FILE = path.join(__dirname, 'links.json');
   }
 })();
 
-// Multer storage config
+// Multer configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_FOLDER),
   filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}-${file.originalname}`;
-    cb(null, uniqueName);
-  }
+    // Sanitize filename
+    const ext = path.extname(file.originalname);
+    const safeName = uuidv4() + ext;
+    cb(null, safeName);
+  },
 });
-const upload = multer({ storage });
 
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (req, file, cb) => {
+    if (!ALLOWED_MIME_TYPES || ALLOWED_MIME_TYPES.some(type => file.mimetype.startsWith(type))) {
+      cb(null, true);
+    } else {
+      cb(new Error('File type not allowed'));
+    }
+  },
+});
+
+// In-memory cache for links (reduces disk I/O)
+let linksCache = {};
+let cacheDirty = false;
+
+// Load links from disk
 async function loadLinks() {
   try {
     const data = await fs.readFile(LINKS_FILE, 'utf-8');
@@ -39,34 +59,10 @@ async function loadLinks() {
     console.error('Failed to load links.json, initializing empty:', err.message);
     linksCache = {};
   }
-  
-const saveLinks = (links) => {
-  fs.writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2));
-};
-setInterval(saveLinksIfDirty, 10000);
-process.on('SIGINT', async () => {
-  await saveLinksIfDirty();
-  process.exit(0);
-});
-// Upload route
-app.post('/uploadfile', upload.any(), (req, res) => {
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ message: 'No file uploaded.' });
-  }
+}
 
-  const uploadedFile = req.files[0];
-  const downloadId = uuidv4();
-  const filePath = uploadedFile.path;
-
-  const links = loadLinks();
-  links[downloadId] = filePath;
-  saveLinks(links);
-
-  const downloadLink = `http://localhost:${port}/download/${downloadId}`;
-  res.status(200).json({ downloadLink });
-});
-
-  async function saveLinksIfDirty() {
+// Save links to disk (only if dirty)
+async function saveLinksIfDirty() {
   if (cacheDirty) {
     try {
       await fs.writeFile(LINKS_FILE, JSON.stringify(linksCache, null, 2));
@@ -76,38 +72,82 @@ app.post('/uploadfile', upload.any(), (req, res) => {
     }
   }
 }
-  
-// Download route
-app.get('/download/:downloadId', (req, res) => {
-  const { downloadId } = req.params;
-  const links = loadLinks();
-  const filePath = links[downloadId];
 
-  if (!filePath || !fs.existsSync(filePath)) {
-    return res.status(404).send('File not found or already downloaded.');
+// Periodic save (every 10 seconds if dirty)
+setInterval(saveLinksIfDirty, 10000);
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\nShutting down... Saving links...');
+  await saveLinksIfDirty();
+  process.exit(0);
+});
+
+// Initialize cache
+loadLinks();
+
+// Upload route
+app.post('/uploadfile', upload.single('file'), async (req, res) => {
+  // Changed to .single('file') — more explicit and common pattern
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
   }
 
-  res.download(filePath, path.basename(filePath), (err) => {
+  const downloadId = uuidv4();
+  const filePath = req.file.path;
+
+  linksCache[downloadId] = filePath;
+  cacheDirty = true;
+
+  const downloadLink = `http://localhost:${port}/download/${downloadId}`;
+  res.status(200).json({ downloadLink });
+});
+
+// Download route (one-time link)
+app.get('/download/:downloadId', async (req, res) => {
+  const { downloadId } = req.params;
+  const filePath = linksCache[downloadId];
+
+  if (!filePath || !(await fs.stat(filePath).catch(() => false))) {
+    delete linksCache[downloadId]; // Clean up stale entry
+    cacheDirty = true;
+    return res.status(404).send('File not found or link expired.');
+  }
+
+  // Set filename for download
+  const filename = path.basename(filePath);
+
+  res.download(filePath, filename, async (err) => {
     if (err) {
-      console.error(`Download error: ${err}`);
-      return res.status(500).send('Download failed.');
+      console.error(`Download error for ${downloadId}:`, err);
+      // Don't delete on client cancel/error to allow retry
+      if (!res.headersSent) {
+        res.status(500).send('Download failed.');
+      }
+      return;
     }
 
-    // One-time link: delete file and entry
-    fs.unlink(filePath, (unlinkErr) => {
-      if (unlinkErr) console.warn(`File delete failed: ${unlinkErr}`);
+    // Successful download → delete file and link
+    await fs.unlink(filePath).catch(unlinkErr => {
+      console.warn(`Failed to delete file ${filePath}:`, unlinkErr.message);
     });
-    delete links[downloadId];
-    saveLinks(links);
+
+    delete linksCache[downloadId];
+    cacheDirty = true;
   });
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`API server listening on http://localhost:${port}`);
+// Optional: Serve a simple upload form for testing
+app.get('/', (req, res) => {
+  res.send(`
+    <h2>File Upload (One-time Download Link)</h2>
+    <form action="/uploadfile" method="POST" enctype="multipart/form-data">
+      <input type="file" name="file" required /><br><br>
+      <button type="submit">Upload</button>
+    </form>
+  `);
 });
 
-
-
-
-
+app.listen(port, () => {
+  console.log(`Secure one-time file share server running at http://localhost:${port}`);
+});
